@@ -68,51 +68,6 @@ class _HomeView extends StatelessWidget {
     );
   }
 }
-class _HomeView extends StatelessWidget {
-  const _HomeView();
-
-  @override
-  Widget build(BuildContext context) {
-    final vm = context.watch<HomeViewModel>();
-    final lang = context.watch<LanguageProvider>();
-    final t = lang.t;
-
-    return Scaffold(
-      body: Stack(
-        children: [
-          const AmbientBackground(),
-          SafeArea(
-            child: Column(
-              children: [
-                _Header(),
-                Expanded(
-                  child: AnimatedSwitcher(
-                    duration: const Duration(milliseconds: 400),
-                    switchInCurve: Curves.easeOut,
-                    switchOutCurve: Curves.easeIn,
-                    transitionBuilder: (child, anim) {
-                      final offset = Tween<Offset>(
-                        begin: const Offset(0, 0.05),
-                        end: Offset.zero,
-                      ).animate(anim);
-                      return FadeTransition(
-                        opacity: anim,
-                        child: SlideTransition(
-                          position: offset,
-                          child: child,
-                        ),
-                      );
-                    },
-                    child: _stageChild(context, vm, lang, t),
-                  ),
-                ),
-              ],
-            ),
-          ),
-        ],
-      ),
-    );
-  }
 
   Widget _stageChild(
     BuildContext context,
