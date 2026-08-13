@@ -12,7 +12,7 @@ jobs:
     - uses: actions/checkout@v4
 
     - name: Set up Java
-5      uses: actions/setup-java@v4
+      uses: actions/setup-java@v4
       with:
         distribution: 'zulu'
         java-version: '17'
@@ -24,8 +24,7 @@ jobs:
         channel: 'stable'
 
     - name: Clean & Recreate Android Project
-      run: |
-        flutter create . --platforms=android --project-name=meetcafe
+      run: flutter create . --platforms=android --project-name=meetcafe
 
     - name: Install Dependencies
       run: flutter pub get
