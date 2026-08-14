@@ -1,15 +1,16 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import 'package:url_launcher/url_launcher.dart';
-import '../../data/models/meeting.dart';
-import '../../data/repos/meeting_repository.dart';
-import '../../data/services/cafe_discovery_service.dart';
-import '../../data/services/geolocation_service.dart';
-import '../../i18n/language_controller.dart';
-import '../../shared/widgets/ambient_background.dart';
-import '../../shared/widgets/app_header.dart';
-import '../../shared/widgets/result_card.dart';
-import '../../shared/widgets/waiting_screen.dart';
+import 'package:meetcafe/data/models/meeting.dart';
+import 'package:meetcafe/data/repos/meeting_repository.dart';
+import 'package:meetcafe/data/services/cafe_discovery_service.dart';
+import 'package:meetcafe/data/services/geolocation_service.dart';
+import 'package:meetcafe/i18n/language_controller.dart';
+import 'package:meetcafe/shared/widgets/ambient_background.dart';
+import 'package:meetcafe/shared/widgets/app_header.dart';
+import 'package:meetcafe/shared/widgets/result_card.dart';
+import 'package:meetcafe/shared/widgets/waiting_screen.dart';
+
 
 enum JoinStage { idle, locating, finding, found, noCafe, error }
 
