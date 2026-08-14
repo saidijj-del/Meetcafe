@@ -2,10 +2,11 @@ import "dart:async";
 
 import "package:flutter/foundation.dart";
 
-import "../../core/geo.dart";
-import "../../data/models/meeting.dart";
-import "../../data/repos/meeting_repository.dart";
-import "../../data/services/cafe_service.dart";
+import "package:meetcafe/core/geo.dart";
+import "package:meetcafe/data/models/meeting.dart";
+import "package:meetcafe/data/repos/meeting_repository.dart";
+import "package:meetcafe/data/services/cafe_service.dart";
+
 
 enum JoinStage { idle, locating, finding, found, noCafe, error }
 
