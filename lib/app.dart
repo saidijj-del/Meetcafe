@@ -1,10 +1,9 @@
 import "package:flutter/material.dart";
-import "package:flutter_localizations/flutter_localizations.dart";
 import "package:provider/provider.dart";
 
-import "core/router.dart";
-import "core/theme.dart";
-import "l10n/translations.dart";
+import "package:meetcafe/core/router.dart";
+import "package:meetcafe/core/theme.dart";
+import "package:meetcafe/l10n/translations.dart";
 
 class MeetCafeApp extends StatelessWidget {
   const MeetCafeApp({super.key});
@@ -32,4 +31,3 @@ class MeetCafeApp extends StatelessWidget {
     );
   }
 }
-
