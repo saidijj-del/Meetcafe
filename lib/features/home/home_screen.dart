@@ -3,12 +3,13 @@ import "package:provider/provider.dart";
 import "package:share_plus/share_plus.dart";
 import "package:url_launcher/url_launcher.dart";
 
-import "../../l10n/translations.dart";
-import "../../shared/widgets/ambient_background.dart";
-import "../../shared/widgets/language_switcher.dart";
-import "../../shared/widgets/result_card.dart";
-import "../../shared/widgets/waiting_screen.dart";
+import "package:meetcafe/l10n/translations.dart";
+import "package:meetcafe/shared/widgets/ambient_background.dart";
+import "package:meetcafe/shared/widgets/language_switcher.dart";
+import "package:meetcafe/shared/widgets/result_card.dart";
+import "package:meetcafe/shared/widgets/waiting_screen.dart";
 import "home_view_model.dart";
+
 
 class HomeScreen extends StatelessWidget {
   const HomeScreen({super.key});
