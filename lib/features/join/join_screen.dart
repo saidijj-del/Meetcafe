@@ -1,107 +1,382 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
-import 'package:url_launcher/url_launcher.dart';
-import 'package:meetcafe/data/models/meeting.dart';
-import 'package:meetcafe/data/repos/meeting_repository.dart';
-import 'package:meetcafe/data/services/cafe_discovery_service.dart';
-import 'package:meetcafe/data/services/geolocation_service.dart';
-import 'package:meetcafe/i18n/language_controller.dart';
-import 'package:meetcafe/shared/widgets/ambient_background.dart';
-import 'package:meetcafe/shared/widgets/app_header.dart';
-import 'package:meetcafe/shared/widgets/result_card.dart';
-import 'package:meetcafe/shared/widgets/waiting_screen.dart';
 
+import '../translations.dart';
+import '../shared/widget/background.dart';
+import '../shared/widget/well_card.dart';
+import '../shared/widget/waiting_screen.dart';
+import 'join_view_model.dart';
 
-enum JoinStage { idle, locating, finding, found, noCafe, error }
-
-class JoinScreen extends StatefulWidget {
+class JoinView extends StatefulWidget {
   final String meetingId;
-  const JoinScreen({super.key, required this.meetingId});
-
-  @override
-  State<JoinScreen> createState() => _JoinScreenState();
-}
-
-class _JoinScreenState extends State<JoinScreen> {
-  final _repo = MeetingRepository();
-  final _geo = GeolocationService();
-  final _cafe = CafeDiscoveryService();
-
-  JoinStage _stage = JoinStage.idle;
-  Meeting? _meeting;
-
-  @override
-  void initState() {
-    super.initState();
-    _load();
-  }
-
-  Future<void> _load() async {
-    final m = await _repo.get(widget.meetingId);
-    if (m == null) return;
-    setState(() {
-      _meeting = m;
-      if (m.status == MeetingStatus.found) {
-        _stage = JoinStage.found;
-      } else if (m.status == MeetingStatus.noCafe) {
-        _stage = JoinStage.noCafe;
-      }
-    });
-  }
-
-  Future<void> _join() async {
-    setState(() => _stage = JoinStage.locating);
-    try {
-      final pos = await _geo.getCurrent();
-      setState(() => _stage = JoinStage.finding);
-      await _repo.update(widget.meetingId, {
-        'friend_lat': pos.lat,
-        'friend_lng': pos.lng,
-      });
-
-      final res = await _cafe.discover(
-        initiatorLat: _meeting!.initiatorLat,
-        initiatorLng: _meeting!.initiatorLng,
-        friendLat: pos.lat,
-        friendLng: pos.lng,
-      );
-
-      if (!res.found) {
-        await _repo.update(widget.meetingId, {
-          'status': 'no_cafe',
-          'mid_lat': res.midLat,
-          'mid_lng': res.midLng,
-        });
-        setState(() => _stage = JoinStage.noCafe);
-        return;
-      }
-
-      final finalMeeting = await _repo.update(widget.meetingId, {
-        'status': 'found',
-        'mid_lat': res.midLat,
-        'mid_lng': res.midLng,
-        'cafe_name': res.cafeName,
-        'cafe_lat': res.cafeLat,
-        'cafe_lng': res.cafeLng,
-        'cafe_rating': res.cafeRating,
-        'initiator_travel_time': res.initiatorTravelTime,
-        'friend_travel_time': res.friendTravelTime,
-      });
-
-      setState(() {
-        _meeting = finalMeeting;
-        _stage = JoinStage.found;
-      });
-    } catch (_) {
-      setState(() => _stage = JoinStage.error);
-    }
-  }
-
-  void _reset() => setState(() => _stage = JoinStage.idle);
+  const JoinView({super.key, required this.meetingId});
 
   @override
   Widget build(BuildContext context) {
-    final t = context.read<LanguageController>().t;
+    return ChangeNotifierProvider(
+      create: (_) => JoinViewModel(meetingId: meetingId),
+      child: const _JoinView(),
+    );
+  }
+}
+
+class _JoinView extends StatelessWidget {
+  const _JoinView();
+
+  @override
+  Widget build(BuildContext context) {
+    final vm = context.watch<JoinViewModel>();
+    final lang = context.watch<LanguageProvider>();
+    final t = lang.t;
+
+    return Scaffold(
+      body: Stack(
+        children: [
+          const Background(),
+          SafeArea(
+            child: Column(
+              children: [
+                _Header(),
+                Expanded(
+                  child: _PageView(
+                    duration: const Duration(milliseconds: 400),
+                    child: _getPageChildren(vm, lang, t),
+                  ),
+                ),
+              ],
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _getPageChildren(
+      JoinViewModel vm, LanguageProvider lang, String Function(String) t) {
+    switch (vm.stage) {
+      case JoinStage.idle:
+        return _JoinKey(text: t("join"), onJoin: vm.onJoin);
+      case JoinStage.loading:
+        return _LoadingView(text: t("meeting"));
+      case JoinStage.finding:
+        return WaitingScreen(
+          title: t("findingInfo"),
+          desc: t("findingDesc"),
+        );
+      case JoinStage.found:
+        return _ResultView(text: t("found"), onJoin: vm.onJoin);
+      case JoinStage.noCafe:
+        return _NoCafe(text: t("no_cafe"), onRefresh: vm.onRefresh);
+      case JoinStage.error:
+        return _ErrorView(text: t("error"), onRefresh: vm.onRefresh);
+    }
+  }
+}
+
+class _Header extends StatelessWidget {
+  @override
+  Widget build(BuildContext context) {
+    return Padding(
+      padding: const EdgeInsets.fromLTRB(16, 16, 16, 0),
+      child: Row(
+        mainAxisAlignment: MainAxisAlignment.spaceBetween,
+        children: [
+          Container(
+            width: 36,
+            height: 36,
+            decoration: BoxDecoration(
+              borderRadius: BorderRadius.circular(12),
+              gradient: const LinearGradient(
+                begin: Alignment.topRight,
+                end: Alignment.bottomLeft,
+                colors: [Color(0xFF867650), Color(0xFFD6C091)],
+              ),
+            ),
+            child: const Icon(Icons.coffee, color: Colors.white, size: 20),
+          ),
+          const SizedBox(width: 8),
+          const Text(
+            "MeetCafe",
+            style: TextStyle(
+              fontWeight: FontWeight.w600,
+              color: Color(0xFF262626),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+class _JoinKey extends StatelessWidget {
+  final String text;
+  final Function(String) onJoin;
+
+  const _JoinKey({super.key, required this.text, required this.onJoin});
+
+  @override
+  Widget build(BuildContext context) {
+    return Center(
+      child: Padding(
+        padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 16),
+        child: Column(
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: [
+            TweenAnimationBuilder(
+              tween: Tween<double>(begin: 0.0, end: 1.0),
+              duration: const Duration(milliseconds: 300),
+              builder: (context, value, child) {
+                final scale = 0.5 + (0.5 * value);
+                return Transform.scale(scale: scale, child: child);
+              },
+              child: Container(
+                width: 112,
+                height: 112,
+                decoration: BoxDecoration(
+                  borderRadius: BorderRadius.circular(56),
+                  gradient: const LinearGradient(
+                    begin: Alignment.topRight,
+                    end: Alignment.bottomLeft,
+                    colors: [Color(0xFF867650), Color(0xFFD6C091)],
+                  ),
+                  boxShadow: [
+                    BoxShadow(
+                      color: const Color(0xFFD6C091).withOpacity(0.3),
+                      blurRadius: 40,
+                      offset: const Offset(0, 12),
+                    ),
+                  ],
+                ),
+                child: const Icon(Icons.coffee, size: 56, color: Colors.white),
+              ),
+            ),
+            const SizedBox(height: 24),
+            Text(
+              "MeetCafe",
+              textAlign: TextAlign.center,
+              style: const TextStyle(
+                fontSize: 24,
+                fontWeight: FontWeight.w600,
+                color: Color(0xFF262626),
+                height: 1.2,
+              ),
+            ),
+            const SizedBox(height: 16),
+            Text(
+              text,
+              textAlign: TextAlign.center,
+              style: const TextStyle(color: Color(0xFF878787), height: 1.5),
+            ),
+            const SizedBox(height: 32),
+            _JoinButton(
+              label: "Join Button",
+              onTap: () {},
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+}
+
+class _ResultView extends StatelessWidget {
+  final String text;
+  final Function(String) onJoin;
+
+  const _ResultView({super.key, required this.text, required this.onJoin});
+
+  @override
+  Widget build(BuildContext context) {
+    return Center(
+      child: Padding(
+        padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 16),
+        child: Column(
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: [
+            const Icon(Icons.check, size: 64),
+            const SizedBox(height: 24),
+            _GradientButton(
+              label: "JoinButton",
+              onTap: () {},
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+}
+
+class _NoCafe extends StatelessWidget {
+  final String text;
+  final Function() onRefresh;
+
+  const _NoCafe({super.key, required this.text, required this.onRefresh});
+
+  @override
+  Widget build(BuildContext context) {
+    return Center(
+      child: Padding(
+        padding: const EdgeInsets.symmetric(horizontal: 16),
+        child: Column(
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: [
+            Container(
+              width: 80,
+              height: 80,
+              decoration: const BoxDecoration(
+                shape: BoxShape.circle,
+                color: Color(0xFFF9F6F0),
+              ),
+              child: const Icon(Icons.coffee, size: 40, color: Color(0xFF878787)),
+            ),
+            const SizedBox(height: 24),
+            Text(
+              "NoCafe",
+              style: const TextStyle(
+                fontSize: 20,
+                fontWeight: FontWeight.w600,
+                color: Color(0xFF878787),
+              ),
+            ),
+            const SizedBox(height: 8),
+            Text(
+              text,
+              textAlign: TextAlign.center,
+              style: const TextStyle(color: Color(0xFF878787)),
+            ),
+            const SizedBox(height: 32),
+            _GradientButton(
+              label: "Refresh",
+              onTap: onRefresh,
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+}
+
+class _ErrorView extends StatelessWidget {
+  final String text;
+  final Function() onRefresh;
+
+  const _ErrorView({super.key, required this.text, required this.onRefresh});
+
+  @override
+  Widget build(BuildContext context) {
+    return Center(
+      child: Padding(
+        padding: const EdgeInsets.symmetric(horizontal: 16),
+        child: Column(
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: [
+            Container(
+              width: 80,
+              height: 80,
+              decoration: const BoxDecoration(
+                shape: BoxShape.circle,
+                color: Color(0xFFF9F6F0),
+              ),
+              child: const Icon(Icons.error, size: 40, color: Color(0xFF878787)),
+            ),
+            const SizedBox(height: 24),
+            Text(
+              "Error",
+              style: const TextStyle(
+                fontSize: 20,
+                fontWeight: FontWeight.w600,
+                color: Color(0xFF878787),
+              ),
+            ),
+            const SizedBox(height: 8),
+            Text(
+              text,
+              textAlign: TextAlign.center,
+              style: const TextStyle(color: Color(0xFF878787)),
+            ),
+            const SizedBox(height: 32),
+            _GradientButton(
+              label: "Okay",
+              onTap: onRefresh,
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+}
+
+class _GradientButton extends StatelessWidget {
+  final String label;
+  final VoidCallback onTap;
+
+  const _GradientButton({super.key, required this.label, required this.onTap});
+
+  @override
+  Widget build(BuildContext context) {
+    return InkWell(
+      onTap: onTap,
+      child: Container(
+        padding: const EdgeInsets.symmetric(vertical: 16),
+        decoration: BoxDecoration(
+          borderRadius: BorderRadius.circular(12),
+          gradient: const LinearGradient(
+            colors: [Color(0xFF867650), Color(0xFFD6C091)],
+          ),
+        ),
+        child: Row(
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: [
+            const Icon(Icons.refresh, size: 20, color: Colors.white),
+            const SizedBox(width: 8),
+            Text(
+              label,
+              style: const TextStyle(
+                color: Colors.white,
+                fontWeight: FontWeight.w600,
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+}
+
+class _JoinButton extends StatelessWidget {
+  final String label;
+  final VoidCallback onTap;
+
+  const _JoinButton({super.key, required this.label, required this.onTap});
+
+  @override
+  Widget build(BuildContext context) {
+    return InkWell(
+      onTap: onTap,
+      child: Container(
+        padding: const EdgeInsets.symmetric(vertical: 16),
+        decoration: BoxDecoration(
+          color: const Color(0xFF878787),
+          borderRadius: BorderRadius.circular(12),
+        ),
+        child: Row(
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: [
+            const Icon(Icons.login, size: 20, color: Colors.white),
+            const SizedBox(width: 8),
+            Text(
+              label,
+              style: const TextStyle(
+                color: Colors.white,
+                fontWeight: FontWeight.w600,
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+}
     return AmbientBackground(
       child: Scaffold(
         backgroundColor: Colors.transparent,
