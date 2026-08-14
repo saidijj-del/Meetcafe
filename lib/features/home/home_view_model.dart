@@ -3,9 +3,9 @@ import "dart:async";
 import "package:flutter/foundation.dart";
 import "package:flutter/services.dart";
 
-import "../../core/geo.dart";
-import "../../data/models/meeting.dart";
-import "../../data/repos/meeting_repository.dart";
+import "package:meetcafe/core/geo.dart";
+import "package:meetcafe/data/models/meeting.dart";
+import "package:meetcafe/data/repos/meeting_repository.dart";
 
 enum HomeStage { idle, locating, waiting, found, noCafe, error }
 
