@@ -1,9 +1,20 @@
 import "package:flutter/material.dart";
+import "package:meetcafe/l10n/translations.dart";
 
+/// A reusable loading state with the MeetCafe coffee theme.
+/// Shows a pulsing halo, a floating/rotating coffee cup, an optional title and
+/// description (defaulting to localized strings), and a row of staggered dots.
 class WaitingScreen extends StatefulWidget {
-  final String title;
-  final String desc;
-  const WaitingScreen({super.key, required this.title, required this.desc});
+  final LanguageProvider? lang;
+  final String? title;
+  final String? desc;
+
+  const WaitingScreen({
+    super.key,
+    this.lang,
+    this.title,
+    this.desc,
+  });
 
   @override
   State<WaitingScreen> createState() => _WaitingScreenState();
@@ -11,97 +22,190 @@ class WaitingScreen extends StatefulWidget {
 
 class _WaitingScreenState extends State<WaitingScreen>
     with TickerProviderStateMixin {
-  late final AnimationController _pulse;
-  late final AnimationController _float;
+  late final AnimationController _halo;
+  late final AnimationController _cup;
+  late final AnimationController _dots;
 
   @override
   void initState() {
     super.initState();
-    _pulse = AnimationController(
+    _halo = AnimationController(
       vsync: this,
-      duration: const Duration(milliseconds: 1500),
-    )..repeat(reverse: true);
-
-    _float = AnimationController(
+      duration: const Duration(milliseconds: 2400),
+    )..repeat();
+    _cup = AnimationController(
       vsync: this,
       duration: const Duration(milliseconds: 2000),
-    )..repeat(reverse: true);
+    )..repeat();
+    _dots = AnimationController(
+      vsync: this,
+      duration: const Duration(milliseconds: 1200),
+    )..repeat();
   }
 
   @override
   void dispose() {
-    _pulse.dispose();
-    _float.dispose();
+    _halo.dispose();
+    _cup.dispose();
+    _dots.dispose();
     super.dispose();
+  }
+
+  String get _title {
+    if (widget.title != null) return widget.title!;
+    if (widget.lang != null) return widget.lang!.t("waitingTitle");
+    return "Waiting for your friend..";
+  }
+
+  String get _desc {
+    if (widget.desc != null) return widget.desc!;
+    if (widget.lang != null) return widget.lang!.t("waitingDesc");
+    return "Share The link and we'll find your café once they join.";
   }
 
   @override
   Widget build(BuildContext context) {
     return Center(
       child: Padding(
-        padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 32),
+        padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 64),
         child: Column(
           mainAxisSize: MainAxisSize.min,
           children: [
-            Stack(
-              alignment: Alignment.center,
-              children: [
-                ScaleTransition(
-                  scale: Tween(begin: 1.0, end: 1.4).animate(
-                    CurvedAnimation(parent: _pulse, curve: Curves.easeInOut),
-                  ),
-                  child: FadeTransition(
-                    opacity: Tween(begin: 0.5, end: 0.0).animate(_pulse),
-                    child: Container(
-                      width: 96,
-                      height: 96,
-                      decoration: BoxDecoration(
-                        shape: BoxShape.circle,
-                        color: const Color(0xFFD97706).withOpacity(0.3),
-                      ),
-                    ),
-                  ),
-                ),
-                AnimatedBuilder(
-                  animation: _float,
-                  builder: (context, child) {
-                    final v = _float.value;
-                    return Transform.translate(
-                      offset: Offset(0, -6 * v),
-                      child: Transform.rotate(
-                        angle: -0.05 * v,
-                        child: child,
-                      ),
-                    );
-                  },
-                  child: Container(
-                    width: 80,
-                    height: 80,
-                    decoration: BoxDecoration(
-                      shape: BoxShape.circle,
-                      gradient: const LinearGradient(
-                        begin: Alignment.topLeft,
-                        end: Alignment.bottomRight,
-                        colors: [Color(0xFFF59E0B), Color(0xFFC2410C)],
-                      ),
-                      boxShadow: [
-                        BoxShadow(
-                          color: const Color(0xFF92400E).withOpacity(0.25),
-                          blurRadius: 20,
-                          offset: const Offset(0, 8),
+            // Pulsing halo + floating cup
+            SizedBox(
+              width: 96,
+              height: 96,
+              child: Stack(
+                alignment: Alignment.center,
+                children: [
+                  AnimatedBuilder(
+                    animation: _halo,
+                    builder: (_, __) {
+                      final v = _halo.value;
+                      final scale = 1.0 + 0.6 * v;
+                      final opacity = (0.5 - 0.5 * v).abs() * 0.5 + 0.2;
+                      return Transform.scale(
+                        scale: scale,
+                        child: Container(
+                          width: 96,
+                          height: 96,
+                          decoration: BoxDecoration(
+                            shape: BoxShape.circle,
+                            color: const Color(0xFFFFCD34).withOpacity(opacity),
+                          ),
                         ),
-                      ],
-                    ),
-                    child: const Icon(Icons.coffee, size: 40, color: Colors.white),
+                      );
+                    },
                   ),
-                ),
-              ],
+                  AnimatedBuilder(
+                    animation: _cup,
+                    builder: (_, __) {
+                      final v = _cup.value;
+                      final dy = -8.0 * (0.5 - (v - 0.5).abs()) * 2;
+                      final angle = -0.1 * (0.5 - (v - 0.5).abs()) * 2;
+                      return Transform.translate(
+                        offset: Offset(0, dy),
+                        child: Transform.rotate(
+                          angle: angle,
+                          child: Container(
+                            width: 96,
+                            height: 96,
+                            decoration: BoxDecoration(
+                              borderRadius: BorderRadius.circular(24),
+                              gradient: const LinearGradient(
+                                begin: Alignment.topLeft,
+                                end: Alignment.bottomRight,
+                                colors: [
+                                  Color(0xFFFF59E0B),
+                                  Color(0xFFFC2410C),
+                                ],
+                              ),
+                              boxShadow: [
+                                BoxShadow(
+                                  color: const Color(0xFF92400E)
+                                      .withOpacity(0.3),
+                                  blurRadius: 24,
+                                  offset: const Offset(0, 10),
+                                ),
+                              ],
+                            ),
+                            child: const Icon(Icons.coffee,
+                                color: Colors.white, size: 44),
+                          ),
+                        ),
+                      );
+                    },
+                  ),
+                ],
+              ),
             ),
-            const SizedBox(height: 24),
+            const SizedBox(height: 32),
             Text(
-              widget.title,
+              _title,
               textAlign: TextAlign.center,
               style: const TextStyle(
+                fontSize: 22,
+                fontWeight: FontWeight.w600,
+                color: Color(0xFF444403C),
+                letterSpacing: -0.3,
+              ),
+            ),
+            const SizedBox(height: 12),
+            SizedBox(
+              width: 260,
+              child: Text(
+                _desc,
+                textAlign: TextAlign.center,
+                style: const TextStyle(
+                  fontSize: 14,
+                  height: 1.5,
+                  color: Color(0xFF78716C),
+                ),
+              ),
+            ),
+            const SizedBox(height: 32),
+            // Staggered dots
+            Row(
+              mainAxisSize: MainAxisSize.min,
+              children: List.generate(3, (i) {
+                return Padding(
+                  padding: const EdgeInsets.symmetric(horizontal: 4),
+                  child: _Dot(controller: _dots, delay: i * 0.2),
+                );
+              }),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+}
+
+class _Dot extends StatelessWidget {
+  final AnimationController controller;
+  final double delay;
+
+  const _Dot({required this.controller, required this.delay});
+
+  @override
+  Widget build(BuildContext context) {
+    return AnimatedBuilder(
+      animation: controller,
+      builder: (context, child) {
+        final v = (controller.value - delay).clamp(0.0, 1.0);
+        final val = (v * 3.14159 * 2).sin().abs();
+        return Container(
+          width: 8 + 4 * val,
+          height: 8 + 4 * val,
+          decoration: BoxDecoration(
+            shape: BoxShape.circle,
+            color: Color(0xFFFF92400E).withOpacity(0.4 + 0.6 * val),
+          ),
+        );
+      },
+    );
+  }
+}
                 fontSize: 20,
                 fontWeight: FontWeight.bold,
                 color: Color(0xFF1C1917),
