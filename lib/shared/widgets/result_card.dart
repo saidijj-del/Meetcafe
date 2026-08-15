@@ -1,8 +1,9 @@
 import "package:flutter/material.dart";
 import "package:url_launcher/url_launcher.dart";
 
-import "../../data/models/meeting.dart";
-import "../../l10n/translations.dart";
+import "package:meetcafe/data/models/meeting.dart";
+import "package:meetcafe/l10n/translations.dart";
+
 
 class ResultCard extends StatelessWidget {
   final Meeting meeting;
